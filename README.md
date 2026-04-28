@@ -1,6 +1,7 @@
 # Student Grade Service
 
-- CMake
+joel estuvo aqui
+- CMake 
 - GoogleTest
 - pruebas unitarias
 - pruebas de integración
