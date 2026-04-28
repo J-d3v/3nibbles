@@ -1,0 +1,16 @@
+[Unit]
+Description=Student Grade Service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/student-grade-service/current
+Environment=PORT=8080
+ExecStart=/opt/student-grade-service/current/student_grade_service
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
