@@ -1,0 +1,578 @@
+name: C++ Enterprise CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'release/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+  actions: read
+
+env:
+  BUILD_DIR: build
+  APP_NAME: student_grade_service
+  COVERAGE_THRESHOLD: "80"
+
+jobs:
+  secret-scan:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  codeql:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          queries: security-extended,security-and-quality
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ curl zip unzip
+
+      - name: Configure
+        run: |
+          cmake -S . -B $BUILD_DIR -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+
+      - name: Build
+        run: |
+          cmake --build $BUILD_DIR --parallel
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+
+  build-test:
+    name: Build + Unit + Integration + Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ lcov gcovr curl jq zip unzip bc
+
+      - name: Configure
+        run: |
+          cmake -S . -B $BUILD_DIR \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_FLAGS="--coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
+
+      - name: Build
+        run: |
+          cmake --build $BUILD_DIR --parallel
+
+      - name: Run unit tests
+        run: |
+          mkdir -p $BUILD_DIR/test-results
+          ctest --test-dir $BUILD_DIR -R unit --output-on-failure --output-junit $BUILD_DIR/test-results/unit-tests.xml
+
+      - name: Generate coverage
+        run: |
+          mkdir -p $BUILD_DIR/coverage
+
+          lcov \
+            --capture \
+            --directory $BUILD_DIR \
+            --output-file $BUILD_DIR/coverage/coverage.info \
+            --ignore-errors mismatch,gcov,unused \
+            --rc geninfo_unexecuted_blocks=1
+
+          lcov \
+            --remove $BUILD_DIR/coverage/coverage.info \
+            '/usr/*' \
+            '*/_deps/*' \
+            '*/tests/*' \
+            '*/googletest/*' \
+            '*/googlemock/*' \
+            --output-file $BUILD_DIR/coverage/coverage.filtered.info \
+            --ignore-errors mismatch,gcov,unused
+
+          lcov --summary $BUILD_DIR/coverage/coverage.filtered.info | tee $BUILD_DIR/coverage/coverage-summary.txt
+
+      - name: Generate SonarQube coverage report
+        run: |
+          gcovr \
+            --root . \
+            --filter src \
+            --filter include \
+            --exclude 'tests/.*' \
+            --exclude '.*/_deps/.*' \
+            --sonarqube $BUILD_DIR/coverage/sonarqube-coverage.xml
+
+          test -f $BUILD_DIR/coverage/sonarqube-coverage.xml
+          echo "SonarQube coverage report generated"
+          ls -l $BUILD_DIR/coverage/sonarqube-coverage.xml
+
+      - name: Enforce minimum coverage
+        run: |
+          COVERAGE=$(lcov --summary $BUILD_DIR/coverage/coverage.filtered.info 2>/dev/null | awk '/lines......:/ {print $2}' | sed 's/%//')
+          echo "Detected coverage: $COVERAGE%"
+          awk -v cov="$COVERAGE" -v threshold="$COVERAGE_THRESHOLD" 'BEGIN {
+            if (cov+0 < threshold+0) {
+              printf("Coverage %.2f%% is below threshold %.2f%%\n", cov, threshold);
+              exit 1;
+            } else {
+              printf("Coverage %.2f%% meets threshold %.2f%%\n", cov, threshold);
+            }
+          }'
+
+      - name: Start service for integration tests
+        run: |
+          nohup ./$BUILD_DIR/$APP_NAME > $BUILD_DIR/app.log 2>&1 &
+          echo $! > $BUILD_DIR/app.pid
+          sleep 5
+          curl -f http://localhost:8080/health
+
+      - name: Run integration tests
+        run: |
+          ctest --test-dir $BUILD_DIR -R integration --output-on-failure --output-junit $BUILD_DIR/test-results/integration-tests.xml
+
+      - name: Stop service after integration tests
+        if: always()
+        run: |
+          if [ -f "$BUILD_DIR/app.pid" ]; then
+            kill "$(cat $BUILD_DIR/app.pid)" || true
+          fi
+
+      - name: Upload build and test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpp-build-and-test-artifacts
+          path: |
+            ${{ env.BUILD_DIR }}/${{ env.APP_NAME }}
+            ${{ env.BUILD_DIR }}/test-results/
+            ${{ env.BUILD_DIR }}/coverage/
+            ${{ env.BUILD_DIR }}/app.log
+            ${{ env.BUILD_DIR }}/compile_commands.json
+
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    if: github.ref == 'refs/heads/main'
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_ROOT_CERT: ${{ secrets.SONAR_ROOT_CERT }}
+
+    steps:
+      - name: Validate SonarQube secrets
+        id: sonar-secrets
+        run: |
+          if [ -z "$SONAR_TOKEN" ] || [ -z "$SONAR_HOST_URL" ]; then
+            echo "enabled=false" >> $GITHUB_OUTPUT
+            echo "SonarQube secrets not configured. Job will finish without scan."
+          else
+            echo "enabled=true" >> $GITHUB_OUTPUT
+            echo "SonarQube secrets detected."
+          fi
+
+      - name: Checkout
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ curl unzip zip
+
+      - name: Download build artifacts
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: cpp-build-and-test-artifacts
+          path: build-artifacts
+
+      - name: Restore coverage and compile commands
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        run: |
+          mkdir -p $BUILD_DIR/coverage
+
+          COMPILE_COMMANDS_FILE=$(find build-artifacts -type f -name compile_commands.json | head -n 1 || true)
+          COVERAGE_XML_FILE=$(find build-artifacts -type f -name sonarqube-coverage.xml | head -n 1 || true)
+
+          if [ -n "$COMPILE_COMMANDS_FILE" ]; then
+            cp "$COMPILE_COMMANDS_FILE" "$BUILD_DIR/compile_commands.json"
+          fi
+
+          if [ -n "$COVERAGE_XML_FILE" ]; then
+            cp "$COVERAGE_XML_FILE" "$BUILD_DIR/coverage/sonarqube-coverage.xml"
+          fi
+
+          echo "Artifacts restored"
+          ls -R build-artifacts || true
+          ls -R $BUILD_DIR || true
+
+      - name: Verify compile_commands.json exists
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        run: |
+          test -f $BUILD_DIR/compile_commands.json
+          echo "compile_commands.json found"
+          ls -l $BUILD_DIR/compile_commands.json
+
+      - name: Verify SonarQube coverage report exists
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        run: |
+          test -f $BUILD_DIR/coverage/sonarqube-coverage.xml
+          echo "sonarqube-coverage.xml found"
+          ls -l $BUILD_DIR/coverage/sonarqube-coverage.xml
+
+      - name: SonarQube Scan
+        if: steps.sonar-secrets.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+          SONAR_ROOT_CERT: ${{ env.SONAR_ROOT_CERT }}
+        with:
+          args: >
+            -Dsonar.projectKey=student-grade-service
+            -Dsonar.projectName=student-grade-service
+            -Dsonar.sources=src,include
+            -Dsonar.tests=tests
+            -Dsonar.cfamily.compile-commands=build/compile_commands.json
+            -Dsonar.exclusions=build/**,third_party/**
+            -Dsonar.test.inclusions=tests/**/*.cpp
+            -Dsonar.coverageReportPaths=build/coverage/sonarqube-coverage.xml
+            -Dsonar.verbose=true
+
+  dast-zap:
+    name: DAST (OWASP ZAP)
+    runs-on: ubuntu-latest
+    needs: [build-test]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+
+      - name: Configure
+        run: |
+          cmake -S . -B $BUILD_DIR -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: |
+          cmake --build $BUILD_DIR --parallel
+
+      - name: Start service
+        run: |
+          nohup ./$BUILD_DIR/$APP_NAME > $BUILD_DIR/app.log 2>&1 &
+          echo $! > $BUILD_DIR/app.pid
+          sleep 8
+          curl -f http://localhost:8080/health
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: 'http://localhost:8080'
+          fail_action: false
+          cmd_options: '-a'
+          allow_issue_writing: false
+
+      - name: Stop service
+        if: always()
+        run: |
+          if [ -f "$BUILD_DIR/app.pid" ]; then
+            kill "$(cat $BUILD_DIR/app.pid)" || true
+          fi
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            report_html.html
+            report_md.md
+            report_json.json
+
+  package:
+    name: Package Release
+    runs-on: ubuntu-latest
+    needs: [secret-scan, codeql, build-test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ tar gzip
+
+      - name: Configure
+        run: |
+          cmake -S . -B $BUILD_DIR -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build $BUILD_DIR --parallel
+
+      - name: Prepare package structure
+        run: |
+          rm -rf dist
+          mkdir -p dist/app
+          mkdir -p dist/scripts
+          mkdir -p dist/systemd
+
+          cp $BUILD_DIR/$APP_NAME dist/app/
+          chmod +x dist/app/$APP_NAME
+
+          cat > dist/scripts/deploy.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          PACKAGE_PATH="${1:-}"
+          APP_ROOT="/opt/student-grade-service"
+          CURRENT_DIR="${APP_ROOT}/current"
+          SCRIPTS_DIR="${APP_ROOT}/scripts"
+          BACKUP_DIR="/opt/student-grade-service-backups"
+          STAGING_DIR="/tmp/student-grade-service-deploy"
+
+          if [ -z "$PACKAGE_PATH" ]; then
+            echo "Usage: deploy.sh <package.tar.gz>"
+            exit 1
+          fi
+
+          rm -rf "$STAGING_DIR"
+          mkdir -p "$STAGING_DIR"
+          tar -xzf "$PACKAGE_PATH" -C "$STAGING_DIR"
+
+          mkdir -p "$BACKUP_DIR"
+          if [ -d "$CURRENT_DIR" ] && [ -f "$CURRENT_DIR/student_grade_service" ]; then
+            TS=$(date +%Y%m%d%H%M%S)
+            rm -rf "${BACKUP_DIR}/backup-${TS}"
+            mkdir -p "${BACKUP_DIR}/backup-${TS}"
+            cp -R "${CURRENT_DIR}/." "${BACKUP_DIR}/backup-${TS}/"
+            ln -sfn "${BACKUP_DIR}/backup-${TS}" "${BACKUP_DIR}/latest"
+          fi
+
+          rm -rf "$CURRENT_DIR"
+          mkdir -p "$CURRENT_DIR"
+
+          cp -R "$STAGING_DIR/app/." "$CURRENT_DIR/"
+          chmod +x "$CURRENT_DIR/student_grade_service"
+
+          if [ -d "$STAGING_DIR/scripts" ]; then
+            mkdir -p "$SCRIPTS_DIR"
+            cp -R "$STAGING_DIR/scripts/." "$SCRIPTS_DIR/"
+            chmod +x "$SCRIPTS_DIR/"*.sh || true
+          fi
+
+          sudo systemctl restart student-grade-service
+          EOF
+
+          cat > dist/scripts/rollback.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          APP_ROOT="/opt/student-grade-service"
+          CURRENT_DIR="${APP_ROOT}/current"
+          BACKUP_LINK="/opt/student-grade-service-backups/latest"
+
+          if [ ! -L "$BACKUP_LINK" ] && [ ! -d "$BACKUP_LINK" ]; then
+            echo "No backup found for rollback. This is expected on first deployment."
+            exit 0
+          fi
+
+          TARGET_BACKUP="$(readlink -f "$BACKUP_LINK")"
+          if [ -z "$TARGET_BACKUP" ] || [ ! -d "$TARGET_BACKUP" ]; then
+            echo "Resolved backup path is invalid"
+            exit 1
+          fi
+
+          rm -rf "$CURRENT_DIR"
+          mkdir -p "$CURRENT_DIR"
+          cp -R "${TARGET_BACKUP}/." "$CURRENT_DIR/"
+          chmod +x "$CURRENT_DIR/student_grade_service"
+
+          sudo systemctl restart student-grade-service
+          echo "Rollback completed successfully"
+          EOF
+
+          cat > dist/scripts/post_deploy_healthcheck.sh <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+
+          URL="${1:-http://localhost:8080/health}"
+          MAX_ATTEMPTS="${2:-10}"
+          SLEEP_SECONDS="${3:-5}"
+
+          ATTEMPT=1
+          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+            echo "Health check attempt ${ATTEMPT}/${MAX_ATTEMPTS}: ${URL}"
+            if curl -fsS "$URL" > /dev/null; then
+              echo "Health check passed"
+              exit 0
+            fi
+            sleep "$SLEEP_SECONDS"
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          echo "Health check failed after ${MAX_ATTEMPTS} attempts"
+          exit 1
+          EOF
+
+          chmod +x dist/scripts/*.sh
+
+          cat > dist/systemd/student-grade-service.service <<'EOF'
+          [Unit]
+          Description=Student Grade Service
+          After=network.target
+
+          [Service]
+          Type=simple
+          User=ubuntu
+          WorkingDirectory=/opt/student-grade-service/current
+          ExecStart=/opt/student-grade-service/current/student_grade_service
+          Restart=always
+          RestartSec=5
+          Environment=PORT=8080
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          if [ -f README.md ]; then
+            cp README.md dist/
+          fi
+
+      - name: Create release archive
+        run: |
+          tar -czf student-grade-service.tar.gz -C dist .
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-package
+          path: student-grade-service.tar.gz
+
+  deploy:
+    name: Deploy to Ubuntu Server
+    runs-on: ubuntu-latest
+    needs: [package]
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: release-package
+
+      - name: Copy package to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "student-grade-service.tar.gz"
+          target: "/tmp"
+
+      - name: Install and deploy application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+
+            sudo mkdir -p /opt/student-grade-service
+            sudo mkdir -p /opt/student-grade-service/current
+            sudo mkdir -p /opt/student-grade-service/scripts
+            sudo mkdir -p /opt/student-grade-service-backups
+
+            sudo rm -rf /tmp/student-grade-service-package
+            mkdir -p /tmp/student-grade-service-package
+            tar -xzf /tmp/student-grade-service.tar.gz -C /tmp/student-grade-service-package
+
+            sudo cp -f /tmp/student-grade-service-package/systemd/student-grade-service.service /etc/systemd/system/student-grade-service.service
+            sudo cp -f /tmp/student-grade-service-package/scripts/* /opt/student-grade-service/scripts/
+            sudo chmod +x /opt/student-grade-service/scripts/*.sh
+
+            sudo chown -R ubuntu:ubuntu /opt/student-grade-service
+            sudo chown -R ubuntu:ubuntu /opt/student-grade-service-backups
+
+            sudo systemctl daemon-reload
+            sudo systemctl enable student-grade-service || true
+
+            /opt/student-grade-service/scripts/deploy.sh /tmp/student-grade-service.tar.gz
+
+      - name: Post-deploy health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            /opt/student-grade-service/scripts/post_deploy_healthcheck.sh http://localhost:8080/health 10 5
+
+      - name: Rollback if health check fails
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            /opt/student-grade-service/scripts/rollback.sh || true
+
+      - name: Verify service status after rollback
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ubuntu
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            sudo systemctl status student-grade-service --no-pager || true
