@@ -1,0 +1,16 @@
+Actividad Integradora #2
+
+Estudiantes:
+Carlos Baranda      A00840096
+Francisco Membrive  A01831673
+Joel Tellez         A00840297
+
+Partes especificas del proyecto:
+Carlos Baranda: implementacion y explicacion del arbol de expansion minima
+para el cableado optimo, ademas de apoyo en pruebas.
+
+Francisco Membrive: integracion del programa principal, lectura de entrada,
+flujo maximo con Dinic y preparacion de la documentacion.
+
+Joel Tellez: implementacion y explicacion de la ruta TSP y generacion de los
+poligonos de Voronoi para las centrales.
