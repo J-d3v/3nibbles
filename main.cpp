@@ -1,5 +1,3 @@
-// Equipo 4 3nibbles
-
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
