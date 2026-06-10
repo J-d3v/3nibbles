@@ -1,0 +1,10 @@
+# IDE
+.idea/
+
+# Binarios compilados
+main
+cmake-build-debug/
+build/
+
+# macOS
+.DS_Store
