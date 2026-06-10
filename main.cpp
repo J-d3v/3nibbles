@@ -1,4 +1,4 @@
-// Equipo 4
+// Equipo 4 3nibbles
 
 #include <algorithm>
 #include <cmath>
