@@ -6,4 +6,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(FetchContent)
+include(CTest)
+enable_testing()
+
+FetchContent_Declare(
+  googletest
+  GIT_REPOSITORY https://github.com/google/googletest.git
+  GIT_TAG v1.14.0
+)
+FetchContent_MakeAvailable(googletest)
+
+add_library(algorithms_lib
+    src/algorithms.cpp
+)
+target_include_directories(algorithms_lib PUBLIC include)
+
 add_executable(equipo4 main.cpp)
+target_link_libraries(equipo4 PRIVATE algorithms_lib)
+
+add_executable(unit_tests
+    tests/unit/test_algorithms.cpp
+)
+target_link_libraries(unit_tests PRIVATE algorithms_lib GTest::gtest_main)
+
+include(GoogleTest)
+gtest_discover_tests(unit_tests TEST_PREFIX unit.)

@@ -63,7 +63,9 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B $BUILD_DIR -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake -S . -B $BUILD_DIR -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
       - name: Build
         run: |
@@ -72,8 +74,8 @@ jobs:
       - name: Analyze
         uses: github/codeql-action/analyze@v3
 
-  build:
-    name: Build
+  build-test:
+    name: Build + Test + Coverage
     runs-on: ubuntu-latest
 
     steps:
@@ -83,26 +85,49 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build g++
+          sudo apt-get install -y cmake ninja-build g++ gcovr
 
-      - name: Configure
+      - name: Configure with coverage
         run: |
-          cmake -S . -B $BUILD_DIR -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+          cmake -S . -B $BUILD_DIR -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_CXX_FLAGS="--coverage" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage"
 
       - name: Build
         run: |
           cmake --build $BUILD_DIR --parallel
 
+      - name: Run unit tests
+        run: |
+          ctest --test-dir $BUILD_DIR -R unit --output-on-failure
+
+      - name: Generate SonarQube coverage report
+        run: |
+          mkdir -p $BUILD_DIR/coverage
+          gcovr \
+            --root . \
+            --filter src/ \
+            --filter include/ \
+            --exclude 'tests/.*' \
+            --exclude '.*/_deps/.*' \
+            --sonarqube $BUILD_DIR/coverage/sonarqube-coverage.xml
+          echo "Coverage report generated:"
+          ls -l $BUILD_DIR/coverage/sonarqube-coverage.xml
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
-          path: ${{ env.BUILD_DIR }}/compile_commands.json
+          path: |
+            ${{ env.BUILD_DIR }}/compile_commands.json
+            ${{ env.BUILD_DIR }}/coverage/sonarqube-coverage.xml
 
   sonarqube:
     name: SonarQube Scan
     runs-on: ubuntu-latest
-    needs: [build]
+    needs: [build-test]
     if: github.ref == 'refs/heads/main'
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -138,13 +163,17 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
-          path: ${{ env.BUILD_DIR }}
+          path: build-artifacts
 
-      - name: Verify compile_commands.json exists
+      - name: Restore artifacts
         if: steps.sonar-secrets.outputs.enabled == 'true'
         run: |
-          test -f $BUILD_DIR/compile_commands.json
-          echo "compile_commands.json found"
+          mkdir -p $BUILD_DIR/coverage
+          COMPILE_CMD=$(find build-artifacts -name compile_commands.json | head -1 || true)
+          COVERAGE_XML=$(find build-artifacts -name sonarqube-coverage.xml | head -1 || true)
+          [ -n "$COMPILE_CMD" ] && cp "$COMPILE_CMD" "$BUILD_DIR/compile_commands.json"
+          [ -n "$COVERAGE_XML" ] && cp "$COVERAGE_XML" "$BUILD_DIR/coverage/sonarqube-coverage.xml"
+          ls -R $BUILD_DIR || true
 
       - name: SonarQube Scan
         if: steps.sonar-secrets.outputs.enabled == 'true'
@@ -157,7 +186,10 @@ jobs:
           args: >
             -Dsonar.projectKey=3nibbles
             -Dsonar.projectName=3nibbles
-            -Dsonar.sources=.
-            -Dsonar.exclusions=build/**,cmake-build-debug/**,.idea/**
+            -Dsonar.sources=src,include
+            -Dsonar.tests=tests
+            -Dsonar.test.inclusions=tests/**/*.cpp
             -Dsonar.cfamily.compile-commands=build/compile_commands.json
+            -Dsonar.coverageReportPaths=build/coverage/sonarqube-coverage.xml
+            -Dsonar.exclusions=build/**,cmake-build-debug/**,.idea/**
             -Dsonar.verbose=true
