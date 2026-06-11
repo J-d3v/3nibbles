@@ -1,6 +1,5 @@
 /*
-* Copyright (C) 2026 Equipo 4 - Actividad Integradora 2.
- * All rights reserved.
+ * Copyright (C) 2026 Equipo 4 - Actividad Integradora 2. All rights reserved.
  */
 
 #include "algorithms.h"
