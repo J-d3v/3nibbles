@@ -1,4 +1,4 @@
-// Equipo 4 - Actividad Integradora 2
+// Copyright (c) 2026 Equipo 4 - Actividad Integradora 2. All rights reserved.
 
 #include "algorithms.h"
 
@@ -26,15 +26,15 @@ int main() {
         }
     }
     for (int i = 0; i < n; i++) {
-        centrales[i] = leerPunto();
+        centrales[i] = leer_punto();
     }
     vector<pair<int, int>> arcos = prim(dist);
     vector<int> ruta = tsp(dist);
-    long long flujo = flujoMaximo(cap);
+    long long flujo = flujo_maximo(cap);
     vector<vector<Punto>> poligonos = voronoi(centrales);
-    imprimirArcos(arcos);
-    imprimirRuta(ruta);
+    imprimir_arcos(arcos);
+    imprimir_ruta(ruta);
     cout << flujo << '\n';
-    imprimirPoligonos(poligonos);
+    imprimir_poligonos(poligonos);
     return 0;
 }

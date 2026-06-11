@@ -1,6 +1,4 @@
-// Equipo 4 - Actividad Integradora 2
-// Implementacion de: MST (Prim), TSP (Held-Karp/Greedy 2-opt),
-// Flujo maximo (Dinic), Diagramas de Voronoi.
+// Copyright (c) 2026 Equipo 4 - Actividad Integradora 2. All rights reserved.
 
 #include "algorithms.h"
 
@@ -19,7 +17,7 @@ using namespace std;
 const long long INF = numeric_limits<long long>::max() / 4;
 const double EPS = 1e-9;
 
-string nombreNodo(int index) {
+string nombre_nodo(int index) {
     string nombre;
     index++;
     while (index > 0) {
@@ -31,7 +29,7 @@ string nombreNodo(int index) {
     return nombre;
 }
 
-Punto leerPunto() {
+Punto leer_punto() {
     string texto;
     char c;
     while (cin >> c) {
@@ -47,8 +45,8 @@ Punto leerPunto() {
     return p;
 }
 
-static int encontrarMinimo(const vector<long long>& mejor,
-                            const vector<bool>& usado, int n) {
+static int encontrar_minimo(const vector<long long>& mejor,
+                             const vector<bool>& usado, int n) {
     int u = -1;
     for (int i = 0; i < n; i++) {
         if (!usado[i] && (u == -1 || mejor[i] < mejor[u])) {
@@ -58,9 +56,9 @@ static int encontrarMinimo(const vector<long long>& mejor,
     return u;
 }
 
-static void relajarVecinos(int u, const vector<vector<long long>>& dist,
-                            vector<long long>& mejor, vector<int>& padre,
-                            const vector<bool>& usado) {
+static void relajar_vecinos(int u, const vector<vector<long long>>& dist,
+                             vector<long long>& mejor, vector<int>& padre,
+                             const vector<bool>& usado) {
     int n = static_cast<int>(dist.size());
     for (int v = 0; v < n; v++) {
         if (!usado[v] && u != v && dist[u][v] > 0 && dist[u][v] < mejor[v]) {
@@ -78,7 +76,7 @@ vector<pair<int, int>> prim(const vector<vector<long long>>& dist) {
     vector<pair<int, int>> ans;
     mejor[0] = 0;
     for (int paso = 0; paso < n; paso++) {
-        int u = encontrarMinimo(mejor, usado, n);
+        int u = encontrar_minimo(mejor, usado, n);
         if (u == -1 || mejor[u] == INF) {
             break;
         }
@@ -86,13 +84,13 @@ vector<pair<int, int>> prim(const vector<vector<long long>>& dist) {
         if (padre[u] != -1) {
             ans.push_back({padre[u], u});
         }
-        relajarVecinos(u, dist, mejor, padre, usado);
+        relajar_vecinos(u, dist, mejor, padre, usado);
     }
     return ans;
 }
 
-static vector<int> reconstruirTsp(const vector<vector<int>>& padre,
-                                   int completo, int ultimo) {
+static vector<int> reconstruir_tsp(const vector<vector<int>>& padre,
+                                    int completo, int ultimo) {
     vector<int> ruta;
     int mask = completo;
     int actual = ultimo;
@@ -107,9 +105,9 @@ static vector<int> reconstruirTsp(const vector<vector<int>>& padre,
     return ruta;
 }
 
-static int encontrarUltimoTsp(const vector<vector<long long>>& dp,
-                               const vector<vector<long long>>& dist,
-                               int completo, int n) {
+static int encontrar_ultimo_tsp(const vector<vector<long long>>& dp,
+                                 const vector<vector<long long>>& dist,
+                                 int completo, int n) {
     long long mejor = INF;
     int ultimo = -1;
     for (int u = 1; u < n; u++) {
@@ -124,10 +122,10 @@ static int encontrarUltimoTsp(const vector<vector<long long>>& dp,
     return ultimo;
 }
 
-static void procesarTransiciones(int mask, int u,
-                                  const vector<vector<long long>>& dist,
-                                  vector<vector<long long>>& dp,
-                                  vector<vector<int>>& padre, int n) {
+static void procesar_transiciones(int mask, int u,
+                                   const vector<vector<long long>>& dist,
+                                   vector<vector<long long>>& dp,
+                                   vector<vector<int>>& padre, int n) {
     for (int v = 0; v < n; v++) {
         if ((mask & (1 << v)) != 0 || dist[u][v] <= 0) {
             continue;
@@ -141,7 +139,7 @@ static void procesarTransiciones(int mask, int u,
     }
 }
 
-vector<int> tspDp(const vector<vector<long long>>& dist) {
+vector<int> tsp_dp(const vector<vector<long long>>& dist) {
     int n = static_cast<int>(dist.size());
     int total = static_cast<int>(1LL << n);
     vector<vector<long long>> dp(total, vector<long long>(n, INF));
@@ -155,19 +153,20 @@ vector<int> tspDp(const vector<vector<long long>>& dist) {
             if ((mask & (1 << u)) == 0 || dp[mask][u] == INF) {
                 continue;
             }
-            procesarTransiciones(mask, u, dist, dp, padre, n);
+            procesar_transiciones(mask, u, dist, dp, padre, n);
         }
     }
     int completo = total - 1;
-    int ultimo = encontrarUltimoTsp(dp, dist, completo, n);
+    int ultimo = encontrar_ultimo_tsp(dp, dist, completo, n);
     if (ultimo == -1) {
         return vector<int>();
     }
-    return reconstruirTsp(padre, completo, ultimo);
+    return reconstruir_tsp(padre, completo, ultimo);
 }
 
-static int encontrarVecinoMasCercano(int u, const vector<vector<long long>>& dist,
-                                      const vector<bool>& usado, int n) {
+static int encontrar_vecino_mas_cercano(int u,
+                                         const vector<vector<long long>>& dist,
+                                         const vector<bool>& usado, int n) {
     int mejor = -1;
     for (int v = 0; v < n; v++) {
         if (!usado[v] && dist[u][v] > 0 &&
@@ -200,7 +199,7 @@ static bool aplicar2opt(vector<int>& ruta,
     return false;
 }
 
-vector<int> tspGreedy(const vector<vector<long long>>& dist) {
+vector<int> tsp_greedy(const vector<vector<long long>>& dist) {
     int n = static_cast<int>(dist.size());
     vector<bool> usado(n, false);
     vector<int> ruta;
@@ -208,7 +207,7 @@ vector<int> tspGreedy(const vector<vector<long long>>& dist) {
     usado[0] = true;
     for (int paso = 1; paso < n; paso++) {
         int u = ruta.back();
-        int mejor = encontrarVecinoMasCercano(u, dist, usado, n);
+        int mejor = encontrar_vecino_mas_cercano(u, dist, usado, n);
         if (mejor == -1) {
             return vector<int>();
         }
@@ -229,9 +228,9 @@ vector<int> tspGreedy(const vector<vector<long long>>& dist) {
 vector<int> tsp(const vector<vector<long long>>& dist) {
     int n = static_cast<int>(dist.size());
     if (n <= 20) {
-        return tspDp(dist);
+        return tsp_dp(dist);
     }
-    return tspGreedy(dist);
+    return tsp_greedy(dist);
 }
 
 Dinic::Dinic(int tam) : grafo(tam), nivel(tam, 0), trabajo(tam, 0) {}
@@ -293,7 +292,7 @@ long long Dinic::MaxFlow(int source, int sink) {
     return ans;
 }
 
-long long flujoMaximo(const vector<vector<long long>>& cap) {
+long long flujo_maximo(const vector<vector<long long>>& cap) {
     int n = static_cast<int>(cap.size());
     Dinic red(n);
     for (int i = 0; i < n; i++) {
@@ -313,8 +312,8 @@ Punto interseccion(Punto a, Punto b, double A, double B, double C) {
     return {a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)};
 }
 
-vector<Punto> cortarPoligono(const vector<Punto>& poly,
-                              double A, double B, double C) {
+vector<Punto> cortar_poligono(const vector<Punto>& poly,
+                               double A, double B, double C) {
     vector<Punto> ans;
     if (poly.empty()) {
         return ans;
@@ -335,9 +334,9 @@ vector<Punto> cortarPoligono(const vector<Punto>& poly,
     return ans;
 }
 
-static void calcularBounds(const vector<Punto>& puntos,
-                            double& minx, double& maxx,
-                            double& miny, double& maxy) {
+static void calcular_bounds(const vector<Punto>& puntos,
+                             double& minx, double& maxx,
+                             double& miny, double& maxy) {
     minx = puntos[0].x;
     maxx = puntos[0].x;
     miny = puntos[0].y;
@@ -356,7 +355,7 @@ vector<vector<Punto>> voronoi(const vector<Punto>& puntos) {
     double maxx = 0.0;
     double miny = 0.0;
     double maxy = 0.0;
-    calcularBounds(puntos, minx, maxx, miny, maxy);
+    calcular_bounds(puntos, minx, maxx, miny, maxy);
     double span = max(maxx - minx, maxy - miny);
     if (span < 1.0) {
         span = 1.0;
@@ -378,21 +377,21 @@ vector<vector<Punto>> voronoi(const vector<Punto>& puntos) {
             double B = 2.0 * (puntos[j].y - puntos[i].y);
             double C = puntos[j].x * puntos[j].x + puntos[j].y * puntos[j].y
                      - puntos[i].x * puntos[i].x - puntos[i].y * puntos[i].y;
-            celda = cortarPoligono(celda, A, B, C);
+            celda = cortar_poligono(celda, A, B, C);
         }
         ans.push_back(celda);
     }
     return ans;
 }
 
-void imprimirArcos(const vector<pair<int, int>>& arcos) {
+void imprimir_arcos(const vector<pair<int, int>>& arcos) {
     for (int i = 0; i < static_cast<int>(arcos.size()); i++) {
-        cout << "(" << nombreNodo(arcos[i].first)
-             << "," << nombreNodo(arcos[i].second) << ")" << '\n';
+        cout << "(" << nombre_nodo(arcos[i].first)
+             << "," << nombre_nodo(arcos[i].second) << ")" << '\n';
     }
 }
 
-void imprimirRuta(const vector<int>& ruta) {
+void imprimir_ruta(const vector<int>& ruta) {
     if (ruta.empty()) {
         cout << "no existe ruta" << '\n';
         return;
@@ -401,19 +400,19 @@ void imprimirRuta(const vector<int>& ruta) {
         if (i > 0) {
             cout << " ";
         }
-        cout << nombreNodo(ruta[i]);
+        cout << nombre_nodo(ruta[i]);
     }
     cout << '\n';
 }
 
-double limpiarCero(double x) {
+double limpiar_cero(double x) {
     if (fabs(x) < 0.0005) {
         return 0.0;
     }
     return x;
 }
 
-void imprimirPoligonos(const vector<vector<Punto>>& poligonos) {
+void imprimir_poligonos(const vector<vector<Punto>>& poligonos) {
     cout << fixed << setprecision(2);
     for (int i = 0; i < static_cast<int>(poligonos.size()); i++) {
         cout << "[";
@@ -421,8 +420,8 @@ void imprimirPoligonos(const vector<vector<Punto>>& poligonos) {
             if (j > 0) {
                 cout << " ";
             }
-            cout << "(" << limpiarCero(poligonos[i][j].x)
-                 << "," << limpiarCero(poligonos[i][j].y) << ")";
+            cout << "(" << limpiar_cero(poligonos[i][j].x)
+                 << "," << limpiar_cero(poligonos[i][j].y) << ")";
         }
         cout << "]" << '\n';
     }

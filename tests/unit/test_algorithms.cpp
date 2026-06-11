@@ -1,4 +1,4 @@
-// Equipo 4 - Pruebas unitarias de algoritmos
+// Copyright (c) 2026 Equipo 4 - Pruebas unitarias de algoritmos. All rights reserved.
 
 #include <gtest/gtest.h>
 #include "algorithms.h"
@@ -10,34 +10,34 @@
 
 using namespace std;
 
-// ==================== nombreNodo ====================
+// ==================== nombre_nodo ====================
 
 TEST(NombreNodoTest, FirstNode) {
-    EXPECT_EQ(nombreNodo(0), "A");
+    EXPECT_EQ(nombre_nodo(0), "A");
 }
 
 TEST(NombreNodoTest, SecondNode) {
-    EXPECT_EQ(nombreNodo(1), "B");
+    EXPECT_EQ(nombre_nodo(1), "B");
 }
 
 TEST(NombreNodoTest, LastSingleChar) {
-    EXPECT_EQ(nombreNodo(25), "Z");
+    EXPECT_EQ(nombre_nodo(25), "Z");
 }
 
 TEST(NombreNodoTest, FirstDoubleChar) {
-    EXPECT_EQ(nombreNodo(26), "AA");
+    EXPECT_EQ(nombre_nodo(26), "AA");
 }
 
 TEST(NombreNodoTest, SecondDoubleChar) {
-    EXPECT_EQ(nombreNodo(27), "AB");
+    EXPECT_EQ(nombre_nodo(27), "AB");
 }
 
-// ==================== leerPunto ====================
+// ==================== leer_punto ====================
 
 TEST(LeerPuntoTest, SimplePoint) {
     istringstream input("(1.5, 2.5)");
     streambuf* orig = cin.rdbuf(input.rdbuf());
-    Punto p = leerPunto();
+    Punto p = leer_punto();
     cin.rdbuf(orig);
     EXPECT_NEAR(p.x, 1.5, 1e-9);
     EXPECT_NEAR(p.y, 2.5, 1e-9);
@@ -46,7 +46,7 @@ TEST(LeerPuntoTest, SimplePoint) {
 TEST(LeerPuntoTest, NegativeCoords) {
     istringstream input("(-3.0,-4.5)");
     streambuf* orig = cin.rdbuf(input.rdbuf());
-    Punto p = leerPunto();
+    Punto p = leer_punto();
     cin.rdbuf(orig);
     EXPECT_NEAR(p.x, -3.0, 1e-9);
     EXPECT_NEAR(p.y, -4.5, 1e-9);
@@ -55,7 +55,7 @@ TEST(LeerPuntoTest, NegativeCoords) {
 TEST(LeerPuntoTest, ZeroPoint) {
     istringstream input("(0,0)");
     streambuf* orig = cin.rdbuf(input.rdbuf());
-    Punto p = leerPunto();
+    Punto p = leer_punto();
     cin.rdbuf(orig);
     EXPECT_NEAR(p.x, 0.0, 1e-9);
     EXPECT_NEAR(p.y, 0.0, 1e-9);
@@ -109,7 +109,7 @@ TEST(PrimTest, FullyConnected) {
     EXPECT_EQ(static_cast<int>(result.size()), 3);
 }
 
-// ==================== tspDp ====================
+// ==================== tsp_dp ====================
 
 TEST(TspDpTest, FourNodeComplete) {
     vector<vector<long long>> dist = {
@@ -118,7 +118,7 @@ TEST(TspDpTest, FourNodeComplete) {
         {15, 35, 0, 30},
         {20, 25, 30, 0}
     };
-    auto result = tspDp(dist);
+    auto result = tsp_dp(dist);
     EXPECT_FALSE(result.empty());
     EXPECT_EQ(result.front(), 0);
     EXPECT_EQ(result.back(), 0);
@@ -130,7 +130,7 @@ TEST(TspDpTest, NoReturnPath) {
         {0, 0, 1},
         {0, 0, 0}
     };
-    auto result = tspDp(dist);
+    auto result = tsp_dp(dist);
     EXPECT_TRUE(result.empty());
 }
 
@@ -139,7 +139,7 @@ TEST(TspDpTest, TwoNodes) {
         {0, 5},
         {5, 0}
     };
-    auto result = tspDp(dist);
+    auto result = tsp_dp(dist);
     EXPECT_FALSE(result.empty());
     EXPECT_EQ(result.front(), 0);
     EXPECT_EQ(result.back(), 0);
@@ -152,11 +152,11 @@ TEST(TspDpTest, SkipImpossibleTransitions) {
         {1, 0, 0, 1},
         {1, 1, 1, 0}
     };
-    auto result = tspDp(dist);
+    auto result = tsp_dp(dist);
     EXPECT_FALSE(result.empty());
 }
 
-// ==================== tspGreedy ====================
+// ==================== tsp_greedy ====================
 
 TEST(TspGreedyTest, FourNodeGraph) {
     vector<vector<long long>> dist = {
@@ -165,7 +165,7 @@ TEST(TspGreedyTest, FourNodeGraph) {
         {2, 1, 0, 1},
         {3, 2, 1, 0}
     };
-    auto result = tspGreedy(dist);
+    auto result = tsp_greedy(dist);
     EXPECT_FALSE(result.empty());
     EXPECT_EQ(result.front(), 0);
     EXPECT_EQ(result.back(), 0);
@@ -178,7 +178,7 @@ TEST(TspGreedyTest, NoReturnToStart) {
         {0, 0, 0, 1},
         {0, 0, 0, 0}
     };
-    auto result = tspGreedy(dist);
+    auto result = tsp_greedy(dist);
     EXPECT_TRUE(result.empty());
 }
 
@@ -187,7 +187,7 @@ TEST(TspGreedyTest, NoNeighbor) {
         {0, 0},
         {0, 0}
     };
-    auto result = tspGreedy(dist);
+    auto result = tsp_greedy(dist);
     EXPECT_TRUE(result.empty());
 }
 
@@ -198,7 +198,7 @@ TEST(TspGreedyTest, With2OptImprovement) {
         {15, 7, 0, 8},
         {6,  3, 12, 0}
     };
-    auto result = tspGreedy(dist);
+    auto result = tsp_greedy(dist);
     EXPECT_FALSE(result.empty());
 }
 
@@ -225,7 +225,7 @@ TEST(TspTest, LargeUsesGreedy) {
     EXPECT_FALSE(result.empty());
 }
 
-// ==================== Dinic / flujoMaximo ====================
+// ==================== Dinic / flujo_maximo ====================
 
 TEST(DinicTest, SimpleFlow) {
     Dinic d(4);
@@ -266,7 +266,7 @@ TEST(FlujoMaximoTest, SimpleNetwork) {
         {0, 0,  0,  8},
         {0, 0,  0,  0}
     };
-    EXPECT_EQ(flujoMaximo(cap), 12);
+    EXPECT_EQ(flujo_maximo(cap), 12);
 }
 
 TEST(FlujoMaximoTest, NoEdges) {
@@ -274,7 +274,7 @@ TEST(FlujoMaximoTest, NoEdges) {
         {0, 0},
         {0, 0}
     };
-    EXPECT_EQ(flujoMaximo(cap), 0);
+    EXPECT_EQ(flujo_maximo(cap), 0);
 }
 
 TEST(FlujoMaximoTest, SingleEdge) {
@@ -282,7 +282,7 @@ TEST(FlujoMaximoTest, SingleEdge) {
         {0, 5},
         {0, 0}
     };
-    EXPECT_EQ(flujoMaximo(cap), 5);
+    EXPECT_EQ(flujo_maximo(cap), 5);
 }
 
 // ==================== Geometria ====================
@@ -305,31 +305,31 @@ TEST(InterseccionTest, HorizontalLine) {
 
 TEST(CortarPoligonoTest, EmptyPolygon) {
     vector<Punto> poly = {};
-    auto result = cortarPoligono(poly, 1.0, 0.0, 0.0);
+    auto result = cortar_poligono(poly, 1.0, 0.0, 0.0);
     EXPECT_TRUE(result.empty());
 }
 
 TEST(CortarPoligonoTest, SquareCutByVertical) {
     vector<Punto> poly = {{-1.0,-1.0},{1.0,-1.0},{1.0,1.0},{-1.0,1.0}};
-    auto result = cortarPoligono(poly, 1.0, 0.0, 0.0);
+    auto result = cortar_poligono(poly, 1.0, 0.0, 0.0);
     EXPECT_FALSE(result.empty());
 }
 
 TEST(CortarPoligonoTest, AllOutside) {
     vector<Punto> poly = {{1.0,0.0},{2.0,0.0},{2.0,1.0},{1.0,1.0}};
-    auto result = cortarPoligono(poly, 1.0, 0.0, -1.0);
+    auto result = cortar_poligono(poly, 1.0, 0.0, -1.0);
     EXPECT_TRUE(result.empty());
 }
 
 TEST(CortarPoligonoTest, AllInside) {
     vector<Punto> poly = {{0.0,0.0},{1.0,0.0},{1.0,1.0},{0.0,1.0}};
-    auto result = cortarPoligono(poly, 1.0, 0.0, 5.0);
+    auto result = cortar_poligono(poly, 1.0, 0.0, 5.0);
     EXPECT_EQ(result.size(), poly.size());
 }
 
 TEST(CortarPoligonoTest, PartialCross) {
     vector<Punto> poly = {{-2.0,0.0},{2.0,0.0},{2.0,2.0},{-2.0,2.0}};
-    auto result = cortarPoligono(poly, 1.0, 0.0, 1.0);
+    auto result = cortar_poligono(poly, 1.0, 0.0, 1.0);
     EXPECT_FALSE(result.empty());
 }
 
@@ -353,22 +353,22 @@ TEST(VoronoiTest, SmallSpan) {
     EXPECT_EQ(static_cast<int>(result.size()), 2);
 }
 
-// ==================== limpiarCero ====================
+// ==================== limpiar_cero ====================
 
 TEST(LimpiarCeroTest, SmallPositive) {
-    EXPECT_NEAR(limpiarCero(0.0001), 0.0, 1e-9);
+    EXPECT_NEAR(limpiar_cero(0.0001), 0.0, 1e-9);
 }
 
 TEST(LimpiarCeroTest, SmallNegative) {
-    EXPECT_NEAR(limpiarCero(-0.0001), 0.0, 1e-9);
+    EXPECT_NEAR(limpiar_cero(-0.0001), 0.0, 1e-9);
 }
 
 TEST(LimpiarCeroTest, NotNearZero) {
-    EXPECT_NEAR(limpiarCero(1.5), 1.5, 1e-9);
+    EXPECT_NEAR(limpiar_cero(1.5), 1.5, 1e-9);
 }
 
 TEST(LimpiarCeroTest, ExactZero) {
-    EXPECT_NEAR(limpiarCero(0.0), 0.0, 1e-9);
+    EXPECT_NEAR(limpiar_cero(0.0), 0.0, 1e-9);
 }
 
 // ==================== Funciones de salida ====================
@@ -376,7 +376,7 @@ TEST(LimpiarCeroTest, ExactZero) {
 TEST(ImprimirArcosTest, TwoEdges) {
     ostringstream out;
     streambuf* orig = cout.rdbuf(out.rdbuf());
-    imprimirArcos({{0, 1}, {1, 2}});
+    imprimir_arcos({{0, 1}, {1, 2}});
     cout.rdbuf(orig);
     string s = out.str();
     EXPECT_NE(s.find("(A,B)"), string::npos);
@@ -386,7 +386,7 @@ TEST(ImprimirArcosTest, TwoEdges) {
 TEST(ImprimirArcosTest, EmptyArcos) {
     ostringstream out;
     streambuf* orig = cout.rdbuf(out.rdbuf());
-    imprimirArcos({});
+    imprimir_arcos({});
     cout.rdbuf(orig);
     EXPECT_TRUE(out.str().empty());
 }
@@ -394,7 +394,7 @@ TEST(ImprimirArcosTest, EmptyArcos) {
 TEST(ImprimirRutaTest, ValidRoute) {
     ostringstream out;
     streambuf* orig = cout.rdbuf(out.rdbuf());
-    imprimirRuta({0, 1, 2, 0});
+    imprimir_ruta({0, 1, 2, 0});
     cout.rdbuf(orig);
     EXPECT_NE(out.str().find("A"), string::npos);
 }
@@ -402,7 +402,7 @@ TEST(ImprimirRutaTest, ValidRoute) {
 TEST(ImprimirRutaTest, EmptyRoute) {
     ostringstream out;
     streambuf* orig = cout.rdbuf(out.rdbuf());
-    imprimirRuta({});
+    imprimir_ruta({});
     cout.rdbuf(orig);
     EXPECT_NE(out.str().find("no existe ruta"), string::npos);
 }
@@ -411,7 +411,7 @@ TEST(ImprimirPoligonosTest, SimplePolygon) {
     ostringstream out;
     streambuf* orig = cout.rdbuf(out.rdbuf());
     vector<vector<Punto>> polys = {{{1.0, 2.0}, {3.0, 4.0}}};
-    imprimirPoligonos(polys);
+    imprimir_poligonos(polys);
     cout.rdbuf(orig);
     EXPECT_NE(out.str().find("["), string::npos);
 }
@@ -423,7 +423,7 @@ TEST(ImprimirPoligonosTest, MultiplePolygons) {
         {{0.0, 0.0}, {1.0, 0.0}},
         {{2.0, 0.0}, {3.0, 1.0}}
     };
-    imprimirPoligonos(polys);
+    imprimir_poligonos(polys);
     cout.rdbuf(orig);
     string s = out.str();
     EXPECT_NE(s.find("]"), string::npos);
