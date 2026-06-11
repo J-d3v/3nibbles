@@ -1,4 +1,7 @@
-// Copyright (c) 2026 Equipo 4 - Pruebas unitarias de algoritmos. All rights reserved.
+/*
+* Copyright (C) 2026 Equipo 4 - Actividad Integradora 2.
+ * All rights reserved.
+ */
 
 #include <gtest/gtest.h>
 #include "algorithms.h"
