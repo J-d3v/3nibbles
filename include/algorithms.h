@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2026 Equipo 4 - Actividad Integradora 2.
+ * All rights reserved.
+ */
+
 /**
  * @file algorithms.h
  * @brief Declaraciones de algoritmos: MST (Kruskal), TSP, Flujo maximo, Voronoi.

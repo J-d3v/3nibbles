@@ -1,3 +1,8 @@
+/*
+ * Copyright (C) 2026 Equipo 4 - Actividad Integradora 2.
+ * All rights reserved.
+ */
+
 #include "algorithms.h"
 
 #include <algorithm>
@@ -52,16 +57,16 @@ namespace {
         explicit UnionFind(int n) : padre(n), rango(n, 0) {
             iota(padre.begin(), padre.end(), 0);
         }
-        int find(int x) {
+        int Find(int x) {
             while (padre[x] != x) {
                 padre[x] = padre[padre[x]];
                 x = padre[x];
             }
             return x;
         }
-        bool unite(int x, int y) {
-            x = find(x);
-            y = find(y);
+        bool Unite(int x, int y) {
+            x = Find(x);
+            y = Find(y);
             if (x == y) {
                 return false;
             }
@@ -91,7 +96,7 @@ vector<pair<int, int>> kruskal(const vector<vector<long long>>& dist) {
     UnionFind uf(n);
     vector<pair<int, int>> mst;
     for (auto& [w, u, v] : aristas) {
-        if (uf.unite(u, v)) {
+        if (uf.Unite(u, v)) {
             mst.push_back({u, v});
             if (static_cast<int>(mst.size()) == n - 1) {
                 break;
