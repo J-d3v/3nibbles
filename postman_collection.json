@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "Equipo 4 - Actividad Integradora 2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "host",
+      "value": "localhost",
+      "type": "string"
+    },
+    {
+      "key": "port",
+      "value": "8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Status",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://{{host}}:{{port}}/status",
+          "protocol": "http",
+          "host": ["{{host}}"],
+          "port": "{{port}}",
+          "path": ["status"]
+        }
+      }
+    },
+    {
+      "name": "Caso 1 - N=4",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"N\": 4,\n  \"distancias\": [\n    [0, 16, 45, 32],\n    [16, 0, 18, 21],\n    [45, 18, 0, 7],\n    [32, 21, 7, 0]\n  ],\n  \"capacidades\": [\n    [0, 48, 12, 18],\n    [52, 0, 42, 32],\n    [18, 46, 0, 56],\n    [24, 36, 52, 0]\n  ],\n  \"centrales\": [\n    [200, 500],\n    [300, 100],\n    [450, 150],\n    [520, 480]\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://{{host}}:{{port}}/solve",
+          "protocol": "http",
+          "host": ["{{host}}"],
+          "port": "{{port}}",
+          "path": ["solve"]
+        }
+      }
+    },
+    {
+      "name": "Caso 2 - N=5",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"N\": 5,\n  \"distancias\": [\n    [0, 2, 9, 10, 7],\n    [2, 0, 6, 4, 3],\n    [9, 6, 0, 8, 5],\n    [10, 4, 8, 0, 6],\n    [7, 3, 5, 6, 0]\n  ],\n  \"capacidades\": [\n    [0, 10, 5, 0, 0],\n    [0, 0, 15, 10, 0],\n    [0, 0, 0, 10, 10],\n    [0, 0, 0, 0, 10],\n    [0, 0, 0, 0, 0]\n  ],\n  \"centrales\": [\n    [100, 100],\n    [200, 300],\n    [400, 200],\n    [500, 500],\n    [650, 150]\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://{{host}}:{{port}}/solve",
+          "protocol": "http",
+          "host": ["{{host}}"],
+          "port": "{{port}}",
+          "path": ["solve"]
+        }
+      }
+    },
+    {
+      "name": "Caso 3 - N=6",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"N\": 6,\n  \"distancias\": [\n    [0, 3, 4, 2, 7, 9],\n    [3, 0, 4, 6, 3, 8],\n    [4, 4, 0, 5, 8, 2],\n    [2, 6, 5, 0, 6, 7],\n    [7, 3, 8, 6, 0, 4],\n    [9, 8, 2, 7, 4, 0]\n  ],\n  \"capacidades\": [\n    [0, 16, 13, 0, 0, 0],\n    [0, 0, 10, 12, 0, 0],\n    [0, 4, 0, 0, 14, 0],\n    [0, 0, 9, 0, 0, 20],\n    [0, 0, 0, 7, 0, 4],\n    [0, 0, 0, 0, 0, 0]\n  ],\n  \"centrales\": [\n    [50, 50],\n    [120, 300],\n    [250, 180],\n    [400, 400],\n    [600, 100],\n    [750, 350]\n  ]\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "http://{{host}}:{{port}}/solve",
+          "protocol": "http",
+          "host": ["{{host}}"],
+          "port": "{{port}}",
+          "path": ["solve"]
+        }
+      }
+    }
+  ]
+}

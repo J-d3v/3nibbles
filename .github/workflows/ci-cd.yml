@@ -225,7 +225,7 @@ jobs:
           ./bin/server &
           echo $! > server.pid
           sleep 5
-          curl -sf http://localhost:8080/health || (echo "Server failed to start"; exit 1)
+          curl -sf http://localhost:8080/status || (echo "Server failed to start"; exit 1)
       - name: OWASP ZAP Baseline Scan
         run: |
           docker run --rm --network=host \

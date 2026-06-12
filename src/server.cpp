@@ -91,7 +91,7 @@ static json ejecutar_solve(const std::string& body_str) {
 int main() {
     httplib::Server svr;
 
-    svr.Get("/health", [](const httplib::Request&, httplib::Response& res) {
+    svr.Get("/status", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(R"({"status":"ok"})", "application/json");
     });
 
