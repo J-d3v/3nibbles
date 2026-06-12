@@ -275,6 +275,12 @@ jobs:
           echo "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+      - name: Stop service before deploy
+        if: steps.deploy-secrets.outputs.enabled == 'true'
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            $DEPLOY_USER@$DEPLOY_HOST \
+            "sudo systemctl stop equipo4 || true"
       - name: Copy binary to server
         if: steps.deploy-secrets.outputs.enabled == 'true'
         run: |
