@@ -17,6 +17,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
+set(HTTPLIB_USE_OPENSSL_IF_AVAILABLE OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(
+  httplib
+  GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+  GIT_TAG v0.18.3
+)
+FetchContent_MakeAvailable(httplib)
+
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
 add_library(algorithms_lib
     src/algorithms.cpp
 )
@@ -24,6 +40,9 @@ target_include_directories(algorithms_lib PUBLIC include)
 
 add_executable(equipo4 main.cpp)
 target_link_libraries(equipo4 PRIVATE algorithms_lib)
+
+add_executable(server src/server.cpp)
+target_link_libraries(server PRIVATE algorithms_lib httplib::httplib nlohmann_json::nlohmann_json)
 
 add_executable(unit_tests
     tests/unit/test_algorithms.cpp
