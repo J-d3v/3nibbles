@@ -5,9 +5,11 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <numeric>
 #include <queue>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace std;
@@ -43,48 +45,60 @@ Punto leer_punto() {
     return p;
 }
 
-static int encontrar_minimo(const vector<long long>& mejor,
-                             const vector<bool>& usado, int n) {
-    int u = -1;
+namespace {
+    struct UnionFind {
+        vector<int> padre;
+        vector<int> rango;
+        explicit UnionFind(int n) : padre(n), rango(n, 0) {
+            iota(padre.begin(), padre.end(), 0);
+        }
+        int find(int x) {
+            while (padre[x] != x) {
+                padre[x] = padre[padre[x]];
+                x = padre[x];
+            }
+            return x;
+        }
+        bool unite(int x, int y) {
+            x = find(x);
+            y = find(y);
+            if (x == y) {
+                return false;
+            }
+            if (rango[x] < rango[y]) {
+                swap(x, y);
+            }
+            padre[y] = x;
+            if (rango[x] == rango[y]) {
+                rango[x]++;
+            }
+            return true;
+        }
+    };
+}
+
+vector<pair<int, int>> kruskal(const vector<vector<long long>>& dist) {
+    int n = static_cast<int>(dist.size());
+    vector<tuple<long long, int, int>> aristas;
     for (int i = 0; i < n; i++) {
-        if (!usado[i] && (u == -1 || mejor[i] < mejor[u])) {
-            u = i;
+        for (int j = i + 1; j < n; j++) {
+            if (dist[i][j] > 0) {
+                aristas.emplace_back(dist[i][j], i, j);
+            }
         }
     }
-    return u;
-}
-
-static void relajar_vecinos(int u, const vector<vector<long long>>& dist,
-                             vector<long long>& mejor, vector<int>& padre,
-                             const vector<bool>& usado) {
-    int n = static_cast<int>(dist.size());
-    for (int v = 0; v < n; v++) {
-        if (!usado[v] && u != v && dist[u][v] > 0 && dist[u][v] < mejor[v]) {
-            mejor[v] = dist[u][v];
-            padre[v] = u;
+    sort(aristas.begin(), aristas.end());
+    UnionFind uf(n);
+    vector<pair<int, int>> mst;
+    for (auto& [w, u, v] : aristas) {
+        if (uf.unite(u, v)) {
+            mst.push_back({u, v});
+            if (static_cast<int>(mst.size()) == n - 1) {
+                break;
+            }
         }
     }
-}
-
-vector<pair<int, int>> prim(const vector<vector<long long>>& dist) {
-    int n = static_cast<int>(dist.size());
-    vector<long long> mejor(n, INF);
-    vector<int> padre(n, -1);
-    vector<bool> usado(n, false);
-    vector<pair<int, int>> ans;
-    mejor[0] = 0;
-    for (int paso = 0; paso < n; paso++) {
-        int u = encontrar_minimo(mejor, usado, n);
-        if (u == -1 || mejor[u] == INF) {
-            break;
-        }
-        usado[u] = true;
-        if (padre[u] != -1) {
-            ans.push_back({padre[u], u});
-        }
-        relajar_vecinos(u, dist, mejor, padre, usado);
-    }
-    return ans;
+    return mst;
 }
 
 static vector<int> reconstruir_tsp(const vector<vector<int>>& padre,

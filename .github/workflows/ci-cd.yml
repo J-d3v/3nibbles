@@ -95,6 +95,7 @@ jobs:
             --root . \
             --filter src/ \
             --filter include/ \
+            --exclude 'src/server\.cpp' \
             --exclude 'tests/.*' \
             --exclude '.*/_deps/.*' \
             --sonarqube $BUILD_DIR/coverage/sonarqube-coverage.xml

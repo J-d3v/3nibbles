@@ -64,52 +64,95 @@ TEST(LeerPuntoTest, ZeroPoint) {
     EXPECT_NEAR(p.y, 0.0, 1e-9);
 }
 
-// ==================== prim ====================
+// ==================== kruskal ====================
 
-TEST(PrimTest, FourNodeGraph) {
+TEST(KruskalTest, FourNodeGraph) {
     vector<vector<long long>> dist = {
         {0, 2, 0, 6},
         {2, 0, 3, 8},
         {0, 3, 0, 7},
         {6, 8, 7, 0}
     };
-    auto result = prim(dist);
+    auto result = kruskal(dist);
     EXPECT_EQ(static_cast<int>(result.size()), 3);
 }
 
-TEST(PrimTest, SingleNode) {
+TEST(KruskalTest, SingleNode) {
     vector<vector<long long>> dist = {{0}};
-    auto result = prim(dist);
+    auto result = kruskal(dist);
     EXPECT_TRUE(result.empty());
 }
 
-TEST(PrimTest, TwoNodes) {
+TEST(KruskalTest, TwoNodes) {
     vector<vector<long long>> dist = {
         {0, 5},
         {5, 0}
     };
-    auto result = prim(dist);
+    auto result = kruskal(dist);
     EXPECT_EQ(static_cast<int>(result.size()), 1);
 }
 
-TEST(PrimTest, DisconnectedGraph) {
+TEST(KruskalTest, DisconnectedGraph) {
     vector<vector<long long>> dist = {
         {0, 0},
         {0, 0}
     };
-    auto result = prim(dist);
+    auto result = kruskal(dist);
     EXPECT_TRUE(result.empty());
 }
 
-TEST(PrimTest, FullyConnected) {
+TEST(KruskalTest, FullyConnected) {
     vector<vector<long long>> dist = {
         {0, 1, 4, 3},
         {1, 0, 2, 5},
         {4, 2, 0, 1},
         {3, 5, 1, 0}
     };
-    auto result = prim(dist);
+    auto result = kruskal(dist);
     EXPECT_EQ(static_cast<int>(result.size()), 3);
+}
+
+TEST(KruskalTest, TestCase1) {
+    vector<vector<long long>> dist = {
+        {0, 16, 45, 32},
+        {16, 0, 18, 21},
+        {45, 18, 0, 7},
+        {32, 21, 7, 0}
+    };
+    auto result = kruskal(dist);
+    ASSERT_EQ(static_cast<int>(result.size()), 3);
+    // Expected edges: (C,D)=7, (A,B)=16, (B,C)=18
+    EXPECT_EQ(result[0], make_pair(2, 3));
+    EXPECT_EQ(result[1], make_pair(0, 1));
+    EXPECT_EQ(result[2], make_pair(1, 2));
+}
+
+TEST(KruskalTest, TestCase2) {
+    vector<vector<long long>> dist = {
+        {0, 2, 9, 10, 7},
+        {2, 0, 6, 4, 3},
+        {9, 6, 0, 8, 5},
+        {10, 4, 8, 0, 6},
+        {7, 3, 5, 6, 0}
+    };
+    auto result = kruskal(dist);
+    ASSERT_EQ(static_cast<int>(result.size()), 4);
+    EXPECT_EQ(result[0], make_pair(0, 1));
+    EXPECT_EQ(result[1], make_pair(1, 4));
+    EXPECT_EQ(result[2], make_pair(1, 3));
+    EXPECT_EQ(result[3], make_pair(2, 4));
+}
+
+TEST(KruskalTest, EdgesOrderedByWeight) {
+    vector<vector<long long>> dist = {
+        {0, 10, 1},
+        {10, 0, 5},
+        {1, 5, 0}
+    };
+    auto result = kruskal(dist);
+    ASSERT_EQ(static_cast<int>(result.size()), 2);
+    // Minimum edge (0,2)=1 should come first
+    EXPECT_EQ(result[0], make_pair(0, 2));
 }
 
 // ==================== tsp_dp ====================

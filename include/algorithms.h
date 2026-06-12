@@ -1,6 +1,6 @@
 /**
  * @file algorithms.h
- * @brief Declaraciones de algoritmos: MST (Prim), TSP, Flujo maximo, Voronoi.
+ * @brief Declaraciones de algoritmos: MST (Kruskal), TSP, Flujo maximo, Voronoi.
  */
 
 #pragma once
@@ -49,8 +49,8 @@ std::string nombre_nodo(int index);
 /** @brief Lee un punto en formato "(x,y)" desde la entrada estandar. */
 Punto leer_punto();
 
-/** @brief Calcula el Arbol de Expansion Minima con el algoritmo de Prim. */
-std::vector<std::pair<int, int>> prim(
+/** @brief Calcula el Arbol de Expansion Minima con el algoritmo de Kruskal. */
+std::vector<std::pair<int, int>> kruskal(
     const std::vector<std::vector<long long>>& dist);
 
 /** @brief Resuelve el TSP de forma exacta con DP de bitmask (n <= 20). */

@@ -26,6 +26,15 @@ static std::vector<std::vector<long long>> parse_matriz(const json& m) {
     return mat;
 }
 
+static long long costo_ruta(const std::vector<int>& ruta,
+                              const std::vector<std::vector<long long>>& dist) {
+    long long total = 0;
+    for (int i = 0; i + 1 < static_cast<int>(ruta.size()); i++) {
+        total += dist[ruta[i]][ruta[i + 1]];
+    }
+    return total;
+}
+
 int main() {
     httplib::Server svr;
 
@@ -33,74 +42,46 @@ int main() {
         res.set_content(R"({"status":"ok"})", "application/json");
     });
 
-    svr.Post("/api/prim", [](const httplib::Request& req, httplib::Response& res) {
+    svr.Post("/solve", [](const httplib::Request& req, httplib::Response& res) {
         try {
-            auto body = json::parse(req.body);
-            auto dist = parse_matriz(body.at("dist"));
-            auto arcos = prim(dist);
-            json result;
-            result["arcos"] = json::array();
+            auto body  = json::parse(req.body);
+            auto dist  = parse_matriz(body.at("distancias"));
+            auto cap   = parse_matriz(body.at("capacidades"));
+
+            auto pts_json = body.at("centrales");
+            std::vector<Punto> centrales;
+            for (auto& c : pts_json) {
+                centrales.push_back({c.at(0).get<double>(), c.at(1).get<double>()});
+            }
+
+            // 1. MST con Kruskal
+            auto arcos = kruskal(dist);
+            json mst_json = json::array();
             for (auto& [u, v] : arcos) {
-                result["arcos"].push_back(
-                    "(" + nombre_nodo(u) + "," + nombre_nodo(v) + ")");
+                mst_json.push_back({nombre_nodo(u), nombre_nodo(v)});
             }
-            res.set_content(result.dump(), "application/json");
-        } catch (const std::exception& e) {
-            res.status = 400;
-            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
-        }
-    });
 
-    svr.Post("/api/tsp", [](const httplib::Request& req, httplib::Response& res) {
-        try {
-            auto body = json::parse(req.body);
-            auto dist = parse_matriz(body.at("dist"));
+            // 2. TSP con ruta y costo
             auto ruta = tsp(dist);
-            json result;
+            json tsp_json;
             if (ruta.empty()) {
-                result["ruta"] = "no existe ruta";
+                tsp_json["ruta"] = json::array();
+                tsp_json["costo"] = 0;
             } else {
-                std::string s;
-                for (int i = 0; i < static_cast<int>(ruta.size()); i++) {
-                    if (i > 0) {
-                        s += " ";
-                    }
-                    s += nombre_nodo(ruta[i]);
+                json ruta_json = json::array();
+                for (int idx : ruta) {
+                    ruta_json.push_back(nombre_nodo(idx));
                 }
-                result["ruta"] = s;
+                tsp_json["ruta"]  = ruta_json;
+                tsp_json["costo"] = costo_ruta(ruta, dist);
             }
-            res.set_content(result.dump(), "application/json");
-        } catch (const std::exception& e) {
-            res.status = 400;
-            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
-        }
-    });
 
-    svr.Post("/api/flujo", [](const httplib::Request& req, httplib::Response& res) {
-        try {
-            auto body = json::parse(req.body);
-            auto cap = parse_matriz(body.at("cap"));
+            // 3. Flujo maximo
             long long flujo = flujo_maximo(cap);
-            json result;
-            result["flujo"] = flujo;
-            res.set_content(result.dump(), "application/json");
-        } catch (const std::exception& e) {
-            res.status = 400;
-            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
-        }
-    });
 
-    svr.Post("/api/voronoi", [](const httplib::Request& req, httplib::Response& res) {
-        try {
-            auto body = json::parse(req.body);
-            auto pts_json = body.at("puntos");
-            std::vector<Punto> puntos;
-            for (auto& p : pts_json) {
-                puntos.push_back({p.at("x").get<double>(), p.at("y").get<double>()});
-            }
-            auto poligonos = voronoi(puntos);
-            json result;
-            result["poligonos"] = json::array();
+            // 4. Voronoi
+            auto poligonos = voronoi(centrales);
+            json voronoi_json = json::array();
             for (auto& poly : poligonos) {
                 json poly_json = json::array();
                 for (auto& pt : poly) {
@@ -109,9 +90,16 @@ int main() {
                         << "(" << limpiar_cero(pt.x) << "," << limpiar_cero(pt.y) << ")";
                     poly_json.push_back(oss.str());
                 }
-                result["poligonos"].push_back(poly_json);
+                voronoi_json.push_back(poly_json);
             }
-            res.set_content(result.dump(), "application/json");
+
+            json result;
+            result["mst"]          = mst_json;
+            result["tsp"]          = tsp_json;
+            result["flujoMaximo"]  = flujo;
+            result["voronoi"]      = voronoi_json;
+
+            res.set_content(result.dump(2), "application/json");
         } catch (const std::exception& e) {
             res.status = 400;
             res.set_content(json{{"error", e.what()}}.dump(), "application/json");

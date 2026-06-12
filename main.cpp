@@ -25,7 +25,7 @@ int main() {
     for (int i = 0; i < n; i++) {
         centrales[i] = leer_punto();
     }
-    vector<pair<int, int>> arcos = prim(dist);
+    vector<pair<int, int>> arcos = kruskal(dist);
     vector<int> ruta = tsp(dist);
     long long flujo = flujo_maximo(cap);
     vector<vector<Punto>> poligonos = voronoi(centrales);
