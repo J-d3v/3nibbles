@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (C) 2026 Equipo 4 - Actividad Integradora 2. All rights reserved.
  */
 
